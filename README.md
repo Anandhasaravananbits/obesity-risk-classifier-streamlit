@@ -47,7 +47,7 @@ python train_models.py
 streamlit run app.py
 ```
 
-Live Streamlit app: STREAMLIT_LINK_HERE
+Live Streamlit app: (https://obesity-risk-classifier-app-efce3k253fpukwxsajkfhs.streamlit.app/)
 
 ## d. Models used
 
