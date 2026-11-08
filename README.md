@@ -1,53 +1,57 @@
-# Obesity Level Classification with Streamlit
+# Obesity Level Classification - ML Assignment 2
+
+M.Tech (AIML), Machine Learning, Assignment 2
 
 ## a. Problem statement
 
-Predict a person's obesity level (7 ordered classes, from `Insufficient_Weight` to `Obesity_Type_III`) from physical measurements and eating/lifestyle habits. Five classifiers are trained on the same dataset, compared on a held-out test set, and exposed through a Streamlit app that evaluates the saved models on an uploaded CSV without retraining.
+The goal is to predict a person's obesity level from their body measurements and eating / lifestyle habits. The target has 7 classes (Insufficient Weight, Normal Weight, Overweight Level I and II, Obesity Type I, II and III). I trained 5 classification models on the same dataset, compared them using Accuracy, AUC, Precision, Recall, F1 and MCC, and built a Streamlit app where a test CSV can be uploaded and evaluated with the saved models.
 
 ## b. Dataset description
 
-- Source: UCI Machine Learning Repository, "Estimation of obesity levels based on eating habits and physical condition" (ID 544).
-- Instances: 2,111 (about 77% synthetic via SMOTE, about 23% collected from a survey in Mexico, Peru and Colombia).
-- Features: 16 (minimum required: 12). Target: `NObeyesdad`, 7 classes, roughly balanced (272 to 351 rows each).
-- Missing values: none. Exact duplicate rows: 24 (kept).
+- Dataset: "Estimation of obesity levels based on eating habits and physical condition" from the UCI ML Repository.
+- Number of rows: 2111
+- Number of features: 16 (the assignment needs at least 12), plus 1 target column `NObeyesdad`
+- Classes: 7 multi-class target, fairly balanced (272 to 351 rows per class)
+- No missing values. There are 24 exact duplicate rows which I left as they are.
+- About 77% of the rows are synthetic (made with SMOTE) and the rest come from an online survey.
 
-| Type | Features |
-|---|---|
-| Numeric | `Age`, `Height`, `Weight`, `FCVC` (vegetable frequency), `NCP` (main meals), `CH2O` (water intake), `FAF` (physical activity), `TUE` (screen time) |
-| Categorical | `Gender`, `family_history_with_overweight`, `FAVC` (high-calorie food), `CAEC` (snacking), `SMOKE`, `SCC` (calorie monitoring), `CALC` (alcohol), `MTRANS` (transport) |
+Numeric features: Age, Height, Weight, FCVC (vegetable eating), NCP (number of main meals), CH2O (water intake), FAF (physical activity), TUE (time using technology).
 
-Preprocessing (inside each saved sklearn `Pipeline`): `StandardScaler` on numeric columns and `OneHotEncoder` on categorical columns. The target is label-encoded (`model/label_encoder.joblib`).
+Categorical features: Gender, family_history_with_overweight, FAVC (high calorie food), CAEC (eating between meals), SMOKE, SCC (calorie monitoring), CALC (alcohol), MTRANS (transport used).
 
-Split: 80/20 stratified, `random_state=2026` (1,688 train / 423 test). The test split is saved as `test_data.csv`.
+Preprocessing: numeric columns are scaled with StandardScaler and categorical columns are one-hot encoded. This is done inside a sklearn Pipeline for every model, so the saved model files already include the preprocessing. The target labels are encoded with a LabelEncoder (saved as `model/label_encoder.joblib`).
+
+Train/test split: 80/20 stratified with random_state 2026, giving 1688 training rows and 423 test rows. The test part is saved as `test_data.csv` and this is the file to upload in the app.
 
 ## c. GitHub repository
 
 https://github.com/Anandhasaravananbits/obesity-risk-classifier-streamlit
 
+Files in the repo:
+
 ```
-obesity-risk-classifier-streamlit/
-|-- app.py              Streamlit app
-|-- train_models.py     training and evaluation script
-|-- metrics_utils.py    shared metric calculation
-|-- requirements.txt
-|-- test_data.csv       held-out test split (features + target)
-|-- data/raw/           original UCI CSV
-|-- model/              5 saved pipelines, label encoder, metrics.json
+app.py               streamlit app
+train_models.py      trains the 5 models and saves them
+metrics_utils.py     function used to calculate the metrics
+requirements.txt
+test_data.csv        test split (features + target)
+data/raw/            original csv from UCI
+model/               saved models (.joblib), label encoder, metrics.json
 ```
 
-Run locally:
+To run it locally:
 
 ```
 pip install -r requirements.txt
-python train_models.py      # optional, regenerates model/ and test_data.csv
+python train_models.py
 streamlit run app.py
 ```
 
-Live app: STREAMLIT_LINK_HERE
+Live Streamlit app: STREAMLIT_LINK_HERE
 
 ## d. Models used
 
-Multi-class metrics: Precision, Recall and F1 are weighted averages; AUC is one-vs-rest macro averaged.
+All 5 models were trained on the same training split and evaluated on the same 423 test rows. Since this is a multi-class problem, Precision, Recall and F1 are weighted averages and AUC is one-vs-rest macro average.
 
 | ML Model Name | Accuracy | AUC | Precision | Recall | F1 | MCC |
 |---|---|---|---|---|---|---|
@@ -57,24 +61,28 @@ Multi-class metrics: Precision, Recall and F1 are weighted averages; AUC is one-
 | Naive Bayes | 0.5626 | 0.8894 | 0.5887 | 0.5626 | 0.5122 | 0.5098 |
 | Support Vector Machine | 0.9574 | 0.9973 | 0.9582 | 0.9574 | 0.9576 | 0.9504 |
 
-### Observations
+Settings used: Logistic Regression (max_iter=2000), Decision Tree (max_depth=12), KNN (k=7, distance weights), Gaussian Naive Bayes (default), SVM (RBF kernel, C=5).
+
+### Observations on model performance
 
 | ML Model Name | Observation about model performance |
 |---|---|
-| Logistic Regression | Strong linear baseline (about 88% accuracy) with the second-best AUC. Class boundaries are largely linear in weight, height and age, but neighbouring BMI-based classes overlap, so some are confused. |
-| Decision Tree | Second-best accuracy and MCC (about 93%). Splits on `Weight` and `Height` recover the BMI-style class cut-offs well. AUC is lowest of the strong models because leaf probabilities are coarse, and the tree may overfit with limited regularisation. |
-| KNN | Weakest of the non-Naive-Bayes models (about 85%). Distance is affected by the 16 one-hot and scaled features, so irrelevant lifestyle columns dilute the weight and height signal. |
-| Naive Bayes | Clearly the worst (about 56%). The Gaussian and conditional-independence assumptions fail because Height and Weight jointly determine the class, and the one-hot features are not Gaussian. |
-| Support Vector Machine | Best on every metric (about 95.7% accuracy, MCC 0.95, AUC 0.997). The RBF kernel captures the non-linear boundary between adjacent classes. |
-| **Overall winner** | **Support Vector Machine (RBF)**, followed by Decision Tree. |
+| Logistic Regression | Gave about 88% accuracy and a high AUC (0.988), so it ranks the classes well even though some predictions are wrong. Most mistakes are between neighbouring classes, for example Overweight Level I and II. Recall is lowest for Overweight Level I (0.71) and Normal Weight (0.76). |
+| Decision Tree | Second best with 92.7% accuracy. The most important features were Weight, Height and Gender, which makes sense because the class is based on BMI. Its AUC (0.956) is lower than the others because tree probabilities are not smooth. |
+| KNN | 84.6% accuracy, the lowest among the four models that worked well. It had trouble with Normal Weight (recall 0.38), which it often mixed up with Overweight Level I. This may be because all 16 features (after one-hot encoding) count in the distance, including lifestyle ones that do not matter much. |
+| Naive Bayes | Worst model by a big margin (56% accuracy, MCC 0.51). It almost fails on Normal Weight, Overweight Level I and II (recall 0.21, 0.14, 0.16). Probably because it treats features as independent, but the class really depends on Height and Weight together. |
+| Support Vector Machine | Best on every metric: 95.7% accuracy, AUC 0.997, MCC 0.950. Every class had recall of 0.90 or more. The RBF kernel seems to handle the non-linear boundaries between the neighbouring classes well. |
+| **Overall winner for this dataset** | **Support Vector Machine**, then Decision Tree. |
 
-Note: the target is defined from BMI (derived from `Height` and `Weight`), so these two features dominate and scores are high. Most of the dataset is synthetic (SMOTE), which can make results optimistic compared with real data.
+One thing to keep in mind: the target is basically calculated from BMI (Weight and Height), so these features make the task easier. Also most of the data is synthetic, so the scores may be higher than what we would get on fully real data.
 
-## Streamlit app features
+## Streamlit app
 
-- CSV upload of the test data (`test_data.csv` works as a sample).
-- Model selection dropdown.
-- Evaluation metrics (Accuracy, AUC, Precision, Recall, F1, MCC).
-- Confusion matrix and classification report.
-- A comparison table of all five models on the uploaded file.
-- Saved models are loaded from `model/` and nothing is retrained.
+The app (`app.py`) has:
+- CSV upload for the test data
+- a dropdown to choose the model
+- the 6 evaluation metrics for the chosen model
+- confusion matrix and classification report
+- a table comparing all 5 models on the uploaded file
+
+The saved models are loaded from the `model/` folder and nothing is retrained in the app.
